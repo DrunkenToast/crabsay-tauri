@@ -1,0 +1,7 @@
+{
+  "name": "ionic-cowsay4k",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue"
+}
