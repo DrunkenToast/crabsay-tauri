@@ -4,7 +4,7 @@
             <ion-toolbar>
                 <ion-title>Generator</ion-title>
                 <ion-buttons slot="end">
-                    <ion-button>
+                    <ion-button v-bind:href="imgDataUrl" download="cowsay4k.png">
                         <ion-icon slot="start" :icon="save"></ion-icon>
                         Export image
                     </ion-button>
@@ -20,20 +20,14 @@
             </ion-header>
             <ion-refresher slot="fixed" @ion-refresh="doRefresh($event)">
                 <ion-refresher-content>
-                    <img class="generated" alt="Generated image" v-bind:src="imgDataUrl" />
                 </ion-refresher-content>
             </ion-refresher>
-
-
-
+                    <img class="generated" alt="Generated image" v-bind:src="imgDataUrl" />
         </ion-content>
     </ion-page>
 </template>
 
 <style>
-ion-refresher {
-    height: 100%;
-}
 .generated {
     display: block;
     max-height: 100%;
@@ -50,6 +44,7 @@ import { save } from 'ionicons/icons';
 import Settings from '../services/settings';
 import { roundRect, drawPolygon } from '../common/util';
 import { Point } from "@/models/point";
+import { Haptics } from '@capacitor/haptics';
 
 const ImageLength = 3;
 const ImagePaths = [
@@ -70,11 +65,11 @@ function generateImage(): Promise<void> {
         let ctx = canvas.getContext('2d');
         if (!ctx) reject('no context');
 
-        const index = Math.floor(Math.random() * 3);
+        const index = Math.floor(Math.random() * ImageLength);
 
         img = new Image();
         img.src = process.env.BASE_URL + ImagePaths[index];
-        img.onload = () => {
+        img.onload = async () => {
             console.log('generating')
             if (!ctx) return;
             if (img == undefined) return;
@@ -133,7 +128,8 @@ export default defineComponent({
     components: { IonHeader, IonToolbar, IonTitle, IonContent, IonPage, IonIcon, IonButton, IonButtons, IonRefresher, IonRefresherContent },
     ionViewWillEnter() {
         imgDataUrl.value = '';
-        generateImage();
+        generateImage()
+            .then(async () => await Haptics.vibrate());
         console.log('here');
     },
     data() {
@@ -145,7 +141,11 @@ export default defineComponent({
     setup() {
         const doRefresh = (event: any) => {
             generateImage()
-                .finally(() => event.target.complete())
+                .finally(() => {
+                    event.target.complete();
+                    Haptics.vibrate();
+                });
+
         }
         return { save, doRefresh }
     }

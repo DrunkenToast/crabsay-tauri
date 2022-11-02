@@ -17,14 +17,13 @@
                         <ion-label position="stacked">Cowsay speech{{Settings.text}}</ion-label>
                         <ion-textarea placeholder="Big epic speech"
                             v-model="Settings.text"
-                            v-on:click="test()"
                             :auto-grow="true">
                         </ion-textarea>
                     </ion-item>
 
                     <ion-item>
                         <ion-label>Pick a color!</ion-label>
-                        <input name="color" type="color"/>
+                        <input name="color" type="color" v-model="Settings.color"/>
                     </ion-item>
 
                     <ion-item>
@@ -53,11 +52,6 @@ export default  defineComponent({
             Settings
         }
     },
-    methods: {
-        test() {
-            console.log('test')
-        }
-    }
 });
 </script>
 
