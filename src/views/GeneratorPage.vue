@@ -126,7 +126,7 @@ function generateImage(): Promise<void> {
 export default defineComponent({
     name: 'GeneratorsPage',
     components: { IonHeader, IonToolbar, IonTitle, IonContent, IonPage, IonIcon, IonButton, IonButtons, IonRefresher, IonRefresherContent },
-    ionViewWillEnter() {
+    ionViewDidEnter() {
         imgDataUrl.value = '';
         generateImage()
             .then(async () => await Haptics.vibrate());
