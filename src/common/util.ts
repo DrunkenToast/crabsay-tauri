@@ -1,26 +1,29 @@
 import { Point } from "@/models/point";
+import { Directory, Filesystem } from "@capacitor/filesystem";
 
 interface Radius {
-    tl: number,
-    tr: number,
-    br: number,
-    bl: number,
+    tl: number;
+    tr: number;
+    br: number;
+    bl: number;
 }
 
 export function roundRect(
     context: CanvasRenderingContext2D,
-    x: number, y: number,
-    w: number, h: number,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
     radius: number | Radius,
     lineWidth: number
 ) {
-    if (typeof (radius) == 'number') {
+    if (typeof radius == "number") {
         radius = {
             tl: radius,
             tr: radius,
             br: radius,
             bl: radius,
-        }
+        };
     }
 
     context.beginPath();
@@ -42,7 +45,6 @@ export function roundRect(
     context.stroke();
 }
 
-
 export function drawPolygon(
     context: CanvasRenderingContext2D,
     points: Point[],
@@ -62,4 +64,29 @@ export function drawPolygon(
 
     context.fill();
     context.stroke();
+}
+
+export async function saveBlobUrl(blobUrl: string): Promise<string> {
+    const blob = await fetch(blobUrl).then(r => r.blob());
+    const dataUrl = await blobToBase64(blob);
+    const data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+
+    console.error("yes!", data);
+
+    const fileName = new Date().getTime() + "-cowsay.png";
+    const savedFile = await Filesystem.writeFile({
+        path: fileName,
+        data: data,
+        directory: Directory.Documents,
+    });
+    return savedFile.uri;
+}
+
+async function blobToBase64(blob: any): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+    });
 }
