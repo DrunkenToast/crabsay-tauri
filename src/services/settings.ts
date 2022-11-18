@@ -1,8 +1,16 @@
-import { Color } from "@ionic/core";
+import { ref } from "vue";
 
 class Settings {
-    text = "test";
-    color: Color = "#000";
+    text = ref("");
+    color = ref("#000");
+
+    constructor() {
+        fetch('https://whatthecommit.com/index.txt')
+            .then((res) => res.text())
+            .then((data) => {
+                this.text.value = data.trim();
+            });
+    }
 }
 
 export default new Settings();
