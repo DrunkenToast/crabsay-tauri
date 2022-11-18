@@ -1,5 +1,4 @@
 import { Point } from "@/models/point";
-import { Directory, Filesystem } from "@capacitor/filesystem";
 
 interface Radius {
     tl: number;
@@ -66,27 +65,3 @@ export function drawPolygon(
     context.stroke();
 }
 
-export async function saveBlobUrl(blobUrl: string): Promise<string> {
-    const blob = await fetch(blobUrl).then(r => r.blob());
-    const dataUrl = await blobToBase64(blob);
-    const data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
-
-    console.error("yes!", data);
-
-    const fileName = new Date().getTime() + "-cowsay.png";
-    const savedFile = await Filesystem.writeFile({
-        path: fileName,
-        data: data,
-        directory: Directory.Documents,
-    });
-    return savedFile.uri;
-}
-
-async function blobToBase64(blob: any): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (error) => reject(error);
-    });
-}
