@@ -65,6 +65,7 @@ import { createToast } from "../util/toast";
 import saveBlobUrl from "../util/save-image";
 import Haptics from "../util/haptics";
 import { generateImage } from "../util/image-generation";
+import { tempdir } from '@tauri-apps/api/os';
 
 let imgDataUrl = ref("");
 let canvas = document.createElement("canvas");
@@ -88,8 +89,8 @@ export default defineComponent({
     },
     ionViewDidEnter() {
         if (isGenerating.value) return;
-        generateImage(isGenerating, imgDataUrl, canvas, img).then(async () => {
-            await Haptics.vibrate();
+        generateImage(isGenerating, imgDataUrl).finally(() => {
+            Haptics.vibrate();
         });
     },
     data() {
@@ -107,7 +108,11 @@ export default defineComponent({
             );
         };
         const doRefresh = (event: any) => {
-            generateImage(isGenerating, imgDataUrl, canvas, img).finally(() => {
+            if (isGenerating.value) {
+                event.target.complete()
+                return
+            }
+            generateImage(isGenerating, imgDataUrl).finally(() => {
                 event.target.complete();
                 Haptics.vibrate();
             });

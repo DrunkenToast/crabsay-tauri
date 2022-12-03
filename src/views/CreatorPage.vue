@@ -12,6 +12,7 @@
                 </ion-toolbar>
             </ion-header>
             <div class="container">
+                <h1>From rust: {{greet}}</h1>
                 <ion-list>
                     <ion-item>
                         <ion-label position="stacked">Cowsay speech</ion-label>
@@ -44,7 +45,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
+import { defineComponent, ref } from "vue";
 import {
     IonPage,
     IonHeader,
@@ -60,6 +61,9 @@ import {
     IonTextarea,
 } from "@ionic/vue";
 import Settings from "../services/settings";
+import { invoke } from '@tauri-apps/api';
+
+let greet = ref('');
 
 export default defineComponent({
     name: "Tab1Page",
@@ -76,9 +80,18 @@ export default defineComponent({
         IonCheckbox,
         IonTextarea,
     },
+    ionViewDidEnter() {
+        invoke('greet', { name: 'this text was sent from vue!'})
+        .then((msg) => {
+                if (typeof msg === 'string')
+                greet.value = msg
+            })
+        .catch((e) => console.log(e))
+    },
     data() {
         return {
             Settings,
+            greet
         };
     },
 });
