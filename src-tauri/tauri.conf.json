@@ -17,8 +17,9 @@
                 "asset": true,
                 "assetScope": ["$TEMP/**/*crabsay.png"]
             },
-            "os": {
-                "all": true
+            "dialog": {
+                "all": false,
+                "save": true
             }
         },
         "bundle": {

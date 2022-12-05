@@ -1,6 +1,7 @@
 use std::io;
 
 use image::ImageError;
+use png::DecodingError;
 use tauri::InvokeError;
 use serde_json::Value;
 
@@ -12,8 +13,11 @@ pub enum Error {
     #[error("IO error")]
     IoError(#[from] std::io::Error),
 
-    #[error("Image error")]
-    ImageError(#[from] ImageError),
+    #[error("Raqote PNG encoding error")]
+    PngEncoding,
+
+    #[error("PNG decoding error")]
+    PngDecoding(#[from] DecodingError),
 }
 
 impl From<Error> for InvokeError {

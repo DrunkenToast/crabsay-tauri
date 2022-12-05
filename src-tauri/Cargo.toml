@@ -17,14 +17,18 @@ tauri-build = { version = "1.2.1", features = [] }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.2.1", features = ["os-all", "protocol-asset"] }
+tauri = { version = "1.2.1", features = ["dialog-save", "protocol-asset"] }
 
 thiserror = "1.0"
 
 image = "0.24.5"
 imageproc = "0.23.0"
+raqote = { version = "0.8", features = ["text"] }
 rand = "0.8.5"
 anyhow = "1.0"
+hex = "0.4"
+png = "0.16"
+font-kit = "0.7"
 
 # [profile.release.package.image]
 [profile.release.package.image]
@@ -43,7 +47,7 @@ overflow-checks = false
 [features]
 # by default Tauri runs in production mode
 # when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
-default = [ "custom-protocol" ]
+default = ["custom-protocol"]
 # this feature is used for production builds where `devPath` points to the filesystem
 # DO NOT remove this
-custom-protocol = [ "tauri/custom-protocol" ]
+custom-protocol = ["tauri/custom-protocol"]
