@@ -1,54 +1,32 @@
-import { Capacitor } from "@capacitor/core";
-import { Directory, Filesystem } from "@capacitor/filesystem";
+import Settings from "../services/settings";
+import { invoke } from "@tauri-apps/api";
+import { save } from '@tauri-apps/api/dialog';
+import { createToast } from "./toast";
 
-function generateFileName(): string {
-    return new Date().getTime() + "-cowsay.png";
-}
-
-// Mock/fallback
-const saveBlobUrlCompat = async (blobUrl: string): Promise<string> => {
-    const blob = await fetch(blobUrl).then(r => r.blob());
-    const dataUrl = await blobToBase64(blob);
-
-    const link = document.createElement('a');
-    const fileName = generateFileName();
-    link.setAttribute('download', fileName);
-    link.setAttribute('href', dataUrl);
-
-    link.click();
-    return fileName;
-}
-
-// Native
-const saveBlobUrlNative = async (blobUrl: string): Promise<string> => {
-    const blob = await fetch(blobUrl).then(r => r.blob());
-    const dataUrl = await blobToBase64(blob);
-    const data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
-
-    const file = await Filesystem.writeFile({
-        path: generateFileName(),
-        data: data,
-        directory: Directory.Documents,
+async function exportImage() {
+    const filePath = await save({
+        filters: [{
+            name: 'Image',
+            extensions: ['png']
+        }]
     });
-    return file.uri;
+    
+    if (!filePath) return;
+
+    invoke("save_image", {
+        writePath: filePath,
+        message: Settings.text.value,
+        color: Settings.color.value,
+    })
+        .then(() => {
+            createToast("Image exported to: " + filePath, "top");
+        })
+        .catch((e) => {
+            createToast(
+                "An error occured exporting your image"
+            );
+            console.error(e);
+        });
 }
 
-async function blobToBase64(blob: any): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (error) => reject(error);
-    });
-}
-
-// Factory
-let saveBlobUrl: (url: string) => Promise<string>;
-if (Capacitor.isNativePlatform()) {
-    saveBlobUrl = saveBlobUrlNative;
-}
-else {
-    saveBlobUrl = saveBlobUrlCompat;
-}
-
-export default saveBlobUrl;
+export default exportImage;

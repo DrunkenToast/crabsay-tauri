@@ -61,15 +61,11 @@ import {
 } from "@ionic/vue";
 import { save } from "ionicons/icons";
 import Settings from "../services/settings";
-import { createToast } from "../util/toast";
-import saveBlobUrl from "../util/save-image";
+import exportImage from "../util/save-image";
 import Haptics from "../util/haptics";
 import { generateImage } from "../util/image-generation";
-import { tempdir } from '@tauri-apps/api/os';
 
 let imgDataUrl = ref("");
-let canvas = document.createElement("canvas");
-let img: HTMLImageElement | undefined;
 let isGenerating = ref(false);
 
 export default defineComponent({
@@ -102,10 +98,8 @@ export default defineComponent({
     },
     methods: {},
     setup() {
-        const exportImg = (_event: any) => {
-            saveBlobUrl(imgDataUrl.value).then((s: string) =>
-                createToast("Image exported to: " + s)
-            );
+        const exportImg = async (_event: any) => {
+            await exportImage();
         };
         const doRefresh = (event: any) => {
             if (isGenerating.value) {

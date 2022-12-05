@@ -14,6 +14,7 @@ use draw::image_asset::*;
 
 use std::env;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use tauri::{Manager, WindowEvent, InvokeError};
 
 use rand::seq::SliceRandom;
@@ -24,16 +25,46 @@ fn greet(name: &str, state: tauri::State<ImageState>) -> String {
 }
 
 #[tauri::command]
+async fn save_image(write_path: String, message: String, color: String, state: tauri::State<'_, ImageState>, app_handle: tauri::AppHandle) -> Result<()> {
+    let path = Path::new(&write_path);
+
+    let asset = { // ez scope for early drop (easier :D)
+        *state.asset.lock().unwrap()
+    };
+
+    if let Some(asset) = asset {
+        let asset_path = app_handle.path_resolver().resolve_resource(&asset.path)
+            .expect("Asset should exist");
+
+        dbg!(&write_path);
+
+        draw_image(
+            path,
+            &asset_path.as_path(),
+            &asset.point,
+            message,
+            color
+        ).await?;
+        return Ok(());
+    }
+    Err(Error::Generic("Nothing to export".into()))
+}
+
+#[tauri::command]
 async fn generate_image(message: String, color: String, state: tauri::State<'_, ImageState>, app_handle: tauri::AppHandle) -> Result<String> {
-    let asset = state.assets.choose(&mut rand::thread_rng())
+    let asset = DEFAULT_ASSETS.choose(&mut rand::thread_rng())
         .expect("Slice shouldn't be empty");
+    *state.asset.lock().unwrap() = Some(asset);
 
     println!("Random asset: {:?}", asset);
 
-    let path = app_handle.path_resolver().resolve_resource(&asset.path)
+    let path = app_handle.path_resolver().resolve_resource(asset.path)
         .expect("Asset should exist");
 
-    draw_image(state.path.as_path(), path.as_path(), &asset.point).await.expect("TEST");
+    draw_image(
+        state.path.as_path(), path.as_path(), &asset.point,
+        message, color
+    ).await?;
 
     Ok(state.path.clone().into_os_string().into_string()
         .map_err(|_| {Error::Generic("Failed to convert path into string".into())}).expect("TEST2"))
@@ -41,7 +72,7 @@ async fn generate_image(message: String, color: String, state: tauri::State<'_, 
 
 pub struct ImageState {
     path: PathBuf,
-    assets: Vec<ImageAsset>
+    asset: Mutex<Option<&'static ImageAsset>>,
 }
 
 impl Drop for ImageState {
@@ -58,7 +89,7 @@ fn main() {
             buf.set_extension("png");
             buf
         },
-        assets: ImageAsset::default_assets()
+        asset: Mutex::new(None),
     };
 
     tauri::Builder::default()
@@ -70,7 +101,7 @@ fn main() {
             }
             _ => {},
         })
-        .invoke_handler(tauri::generate_handler![greet, generate_image])
+        .invoke_handler(tauri::generate_handler![greet, save_image, generate_image])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
