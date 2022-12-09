@@ -1,3 +1,4 @@
+use font_kit::loader::FallbackFont;
 use raqote::{DrawTarget, Source, StrokeStyle, PathBuilder, DrawOptions, SolidSource, Point};
 
 use font_kit::family_name::FamilyName;
@@ -82,9 +83,13 @@ pub fn draw_text (
 
     let font = SystemSource::new()
         .select_best_match(
-            &[FamilyName::Title("Comic Sans MS".into())],
+            &[
+                FamilyName::Title("Comic Sans MS".into()),
+                FamilyName::Title("Arial".into()),
+                FamilyName::Title("Verdana".into()),
+            ],
             &Properties::new().weight(Weight::NORMAL)
-    ).unwrap().load().unwrap();
+        ).unwrap().load().unwrap();
 
 
     for (i, line) in text.split('\n').enumerate() {
