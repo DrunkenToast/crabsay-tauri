@@ -1,6 +1,6 @@
 {
     "build": {
-        "beforeBuildCommand": "ionic build",
+        "beforeBuildCommand": "npm run build",
         "beforeDevCommand": "ionic serve",
         "devPath": "http://localhost:8100",
         "distDir": "../dist"
