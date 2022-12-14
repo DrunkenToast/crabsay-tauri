@@ -51,25 +51,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "216261ddc8289130e551ddcd5ce8a064710c0d064a4d2895c67151c92b5443f6"
 
 [[package]]
-name = "app"
-version = "0.1.2"
-dependencies = [
- "anyhow",
- "font-kit",
- "hex",
- "image",
- "imageproc",
- "png 0.16.8",
- "rand 0.8.5",
- "raqote",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "thiserror",
-]
-
-[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -446,6 +427,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d997bd5e24a5928dd43e46dc529867e207907fe0b239c3477d924f7f2ca320"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "crabsay"
+version = "0.1.2"
+dependencies = [
+ "anyhow",
+ "font-kit",
+ "hex",
+ "image",
+ "imageproc",
+ "png 0.16.8",
+ "rand 0.8.5",
+ "raqote",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "thiserror",
 ]
 
 [[package]]

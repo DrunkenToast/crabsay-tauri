@@ -1,11 +1,11 @@
 [package]
-name = "Crabsay"
+name = "crabsay"
 version = "0.1.2"
 description = "A Tauri App"
-authors = ["you"]
-license = ""
+authors = ["Peter Leconte"]
+license = "MIT"
 repository = ""
-default-run = "app"
+default-run = "crabsay"
 edition = "2021"
 rust-version = "1.59"
 
