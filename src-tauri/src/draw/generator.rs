@@ -89,7 +89,7 @@ pub async fn draw_image(
         font_size,
         line_height,
         &color_source
-    );
+    )?;
 
     dbg!("Saving to:", &write_path);
     dt.write_png(&write_path).map_err(|_| Error::PngEncoding)?;
