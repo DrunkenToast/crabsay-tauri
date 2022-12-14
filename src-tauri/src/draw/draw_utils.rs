@@ -5,6 +5,8 @@ use font_kit::family_name::FamilyName;
 use font_kit::properties::{Properties, Weight};
 use font_kit::source::SystemSource;
 
+use crate::prelude::Result;
+
 pub fn draw_rounded_rect(
     canvas: &mut DrawTarget,
     top_left: (f32, f32),
@@ -79,8 +81,7 @@ pub fn draw_text (
     font_size: f32,
     line_height: f32,
     source: &Source,
-) {
-
+) -> Result<()> {
     let font = SystemSource::new()
         .select_best_match(
             &[
@@ -89,8 +90,7 @@ pub fn draw_text (
                 FamilyName::Title("Verdana".into()),
             ],
             &Properties::new().weight(Weight::NORMAL)
-        ).unwrap().load().unwrap();
-
+        )?.load()?;
 
     for (i, line) in text.split('\n').enumerate() {
         dt.draw_text(
@@ -102,4 +102,6 @@ pub fn draw_text (
             &DrawOptions::default()
         )
     }
+
+    Ok(())
 }

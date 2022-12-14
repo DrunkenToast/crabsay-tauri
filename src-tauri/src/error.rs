@@ -1,5 +1,6 @@
 use std::io;
 
+use font_kit::error::{SelectionError, FontLoadingError};
 use image::ImageError;
 use png::DecodingError;
 use tauri::InvokeError;
@@ -18,6 +19,12 @@ pub enum Error {
 
     #[error("PNG decoding error")]
     PngDecoding(#[from] DecodingError),
+
+    #[error("Font selection error (do you have Comic Sans?)")]
+    FontSelectionError(#[from] SelectionError),
+
+    #[error("Font loading error")]
+    FontLoadingError(#[from] FontLoadingError),
 }
 
 impl From<Error> for InvokeError {
