@@ -32,11 +32,15 @@ Peter Leconte r0830684 3AD
 ```
 
 For our third report we're doing it differently. I was allowed to make my 
-project in Tauri instead of Electron. Afterwards I will be comparing the two
-against each, as well as the other options we've seen before.
+project in Tauri instead of Electron.  
+We'll be covering the steps to combine/convert our Ionic project to Tauri, how 
+we can make use of the Tauri API and the process for building and 
+cross-building our application.  
+Afterwards I will be comparing the two against each other, 
+as well as the other options we've seen before.
 
 Tauri is a frontend-independent application for multi-platform deployment,
-which has a backend in Rust compared to a backend with node in Electron.
+which has a backend in Rust compared to a backend with Node.js in Electron.
 
 ### Changes in concept
 
@@ -50,8 +54,8 @@ in Rust.
 Do keep in mind however, that this was optional. The frontend code from previous
 project still works fine.
 
-Functionalty stays the same and compared to Ionic I also do a dialog for file 
-output now.
+Functionalty stays the same and compared to Ionic I also added a dialog for 
+exporting the image now.
 
 ## Steps followed
 
@@ -657,11 +661,6 @@ Yes! Mobile support is currently in alpha testing.
 
 https://tauri.app/blog/2022/12/09/tauri-mobile-alpha
 
-
-## Screenshots of end result
-
-![img](img/.png)  
-
 ## Comparison
 
 | Platform | Performance | Development time | Native UI components | Mobile support | Security | Size |
@@ -816,13 +815,192 @@ Tauri is designed with security in mind (but that does not mean there won't be).
 
 Let's cover some of the ways Tauri hardens their [security](https://tauri.app/v1/references/architecture/security).
 
-LEFT OFF HERE
+##### Security hardening
+
+First of all, no server is required. You are able to communicate with your backend 
+without having to make any network requests. This means that no traffic can 
+be sniffed since it isn't there.
+
+This backend is also written in a Rust, a language known for memory safety and 
+speed.
+
+Common security vulnerabilities Rust prevents are:
+
+1. Buffer overflows (an attempt to write more data to a buffer, this can overflow, 
+potentioally leading to executing arbitary code), dangling pointers 
+and other common memory safety issues.
+1. With ownership and lifetimes Rust ensures that data is only accessible when 
+it is needed and that it is automatically cleanup up, reducing the risk of 
+memory leaks and data races.
+1. The type strong type safety prevents type confusion and other types of 
+type-based vulnerabilities.
+1. Rust does not allow uninitialized memory to be used
+1. There are no Null pointers in Rust, instead of Null the Option type is used 
+instead. This helps prevent null reference vulnerabilities.
+
+However, it is important to note that no programming language eliminates all 
+security vulnerabilities.
+
+The default dynamic Ahead of Time compiler generates code references that are
+unique for every session and yet are technically static code units.  
+AOT compilers can help prevent security vulnerabilites by allowing the compiler 
+to perform checks and optimizations as well as making it harder to reverse 
+engineer or modify the program.  
+Decompilation is difficult, which isn't the case with Electron ASAR files.
+
+Tauri also does function hardening.  
+By using functional address Space Layout Randomization techniques function 
+names are randomized at runtime and can implement OTP hashing. This prevents
+static attacks since no two sessions have the same unique ID for each function
+pointer. With the API you can request such an endpoint, which will return 
+a promise wrapped in a closure that Rust injects at runtime in the webview.  
+After the promise resolution the handler will be nulled.
+
+This bridge method also means that unsafe functions aren't served like Electron 
+does.
+
+Not only that but it's also possible to encrypt message with a OTP salt between 
+the UI and the Rust backend.
+
+Compared to Electron, Tauri also takes an opt-in approach to it's API.  
+If it's not enabled, it simply won't be shipped. This reduces bundle size but 
+also it's attack surface.  
+Since they are opt-in you have to consciously choose what you add to your project
+while you work on it.  
+In Electron what you serve in your Context Bridge is your responsibility and 
+can contain all dangerous electron/node API calls. These calls should be safely
+wrapped.
+
+Opt-in might cause friction during development but it is well worth the benefits.
+
+As mentioned before, Tauri injects Content Security Policies. This is an added 
+layer of security which may prevent attacks such as Cross-Site Scripting.  
+Tauri injects these policies in the index.html file of the UI and when 
+using a localhost server, headers are also sent to the UI or any other clients 
+connected.
 
 ##### Electron's checklist
 
+The [Electron docs lists](https://www.electronjs.org/docs/latest/tutorial/security)
+a few steps to follow to improve the security of your application.  
+Let's compare this list with our current Tauri application:
+
+1. **Only load secure content**
+
+This is still very sound advice, even for Tauri and this advice should still be 
+followed.
+
+If the HTTP API of Tauri is used you will need to specify the scopes that are 
+allowed.
+
+2. **Disable the Node.js integration in all renderers that display remote content**
+
+The Rust backend is already seperated from the frontend.  
+The configuration of Tauri also minimizes it's attack surface for such issues
+to occur.
+
+This seperation has another benefit in my opinion: it is very clear when you are 
+or are not working with the Rust backend.
+
+3. **Enable context isolation in all renderers**
+
+The Rust backend is inherently isolated.
+
+4. **Enable process sandboxing**
+
+This feature is specific to Chromium and Tauri uses different webviews specific
+to the used platform.  
+However, renderer (UI) and Rust backend are inherently seperated and can 
+only communicate using the Tauri API.
+
+5. **Handle session permission requests from remote content**
+
+These permissions are handled with the configuration allow list.  
+By default these are denied.
+
+This does show one of the weaknesses of Tauri though.  
+Tauri uses different webviews depending on the platform used. While this has 
+benefits (such as bundle size), on of the downsides might be missing features, 
+in which case this becomes an upstream issue which you might have to wait for.
+
+6. **Do not disable webSecurity**
+
+Not that relevant to Tauri as this option is not a thing.
+TODO
+
+7. **Define a Content-Security-Policy and use restrictive rules (i.e. script-src 'self')**
+
+By default you have to define a CSP, otherwise you might encounter issues with 
+your build.  
+However the advice to not set it to '*' obviously still holds true and
+is sound advice.  
+Only allow what is necessary for you application.
+
+8. **Do not enable allowRunningInsecureContent**
+
+Same argument as 1.
+
+9. **Do not enable experimental features**
+
+Not using experimental features is also sound advice for Tauri (although
+not exactly comparable to Chromium itself but other features such as 
+the recently announced Mobile support for example).  
+It's not ready for production use and might not be tested well enough for 
+security.
+
+10. **Do not use enableBlinkFeatures**
+
+These features are specific to Chromium. However, Tauri uses a variety of 
+webviews, so this is not relevant.
+
+11. **<webview>: Do not use allowpopups**
+
+Dynamic window creation is disabled by default.  
+Like any feature in Tauri and Electron, it's best not to enable if not needed.
+
+12. **<webview>: Verify options and params**
+
+These options can be verified in one central location, your configuration file.  
+It is always important to verify your choices and enabled features to enhance 
+security.
+
+13. **Disable or limit navigation**
+
+This is still necessary in Tauri if you want to prevent this.
+It is still possible for an attacker to 
+convice your app to navigate away from it's origin.
+
+There is no built-in system for this yet, however if you know Rust and ffi you 
+can implement this with webview bindings.
+
+14. **Disable or limit creation of new windows**
+
+Like point 11, creation of windows is turned off by default.
+
+15. **Do not use shell.openExternal with untrusted content**
+
+This advice is also sound for Tauri.  
+In the Rust backend it is possible use the shell. As with all things,
+input validation and sanitation is important. If possible to avoid, definitely
+do. As for example opening external content with the shell can be leveraged for 
+executing arbitrary commands.
+
+16. **Use a current version of Electron**
+
+This is true for any piece of software, also Tauri but not only that but in 
+general the dependencies you use for your project. Make sure it's up-to-date.
+
+17. **Validate the sender of all IPC messages**
+
+Tauri has multiple methods of hardening functions as mentioned before, which 
+makes abusing this bridge incredibly hard.
+
+While technically possible to make an extra validation, this would require you
+to access the webview which is dependant on your platform.
+
 ### Bundle size
 
-It's a small (hah) one but I do want to talk about it.
+It's a small one (hah) but I do want to talk about it.
 
 One of the main selling points of Tauri is it's small bundle size.  
 This is because they don't bundle an entire webview along with the executable 
@@ -831,9 +1009,93 @@ like Electron does with chromium. This results in a huge cut in size.
 Depending on the features you exclude from your configuration file in Tauri
 the bundle size will also get smaller.
 
+Most of the size comes from it beind an AppImage or the included 4k images.
+
 ## Links to theory lesson
+
+- How Tauri works (and Electron by comparison)
+- IPC between UI and Rust backend
+- Combination of Ionic
+- Sandboxing and isolation with webviews and the Rust backend
+- XSS and RCE is covered
+- Electron security and its checklist
+- Asar, used to bundle your app resources, is not hard to decompile compared to 
+Tauri
+- All 3 icons are present in the src-tauri/icons folder
+- Tauri Github action creates the following packaging formats: tar.gz, AppImage,
+deb (Linux), dmg (Apple), msi (Windows)
 
 ## Conclusion
 
+Tauri is a wonderful alternative to Electron providing an optimized and more
+secure frontend for multi-platform deployment.
+
+The documentation and easy-to-use API made it fun to work with.
+
+The extra focus on security, speed and bundle size is unmatched compared to 
+Electron and it definitely makes it worthwhile to consider for you next project.
+
+The flexibility of being able to use Rust on the backend is great for optimizing
+heavy operation.
+
+The tools and documentation they provide are incredible (cross-building
+with Github Actions is a bliss).
+
+The future for Tauri also looks bright with mobile support right around the 
+corner and improving every waking second.
+
+However, that doesn't mean it doesn't come with any downsides.  
+The webviews come with benefits but also drawbacks, namely compatability and 
+features.
+
+In fact, during development one of the issues I encountered had to do with 
+Webkitgtk, an upstream error.
+
+Chromium is one of the most developed and feature complete browsers out there 
+and some features might be missing from other webviews.
+For example: Camera permissions work fine on MacOS but not on Linux because 
+webkitgtk doesn't support WebRTC yet.
+
+Another disadvantage is actually Rust. A blessing and a curse at the same time.
+Rust means an extra language to maintain (and likely learn) within the project.
+Rust being a relatively young language might mean you don't have the same broad
+amount of libraries as for example npm might have.
+To add on to this, Tauri's ecosystem in general isn't as big as Electron's 
+ecosystem. Finding plugins or even solutions online might be more difficult 
+(although for that last one, Tauri's community is incredibly welcoming 
+and helpful, not a single question went unanswered).  
+However, this is a problem that will be fixed with time.
+
+I had a blast working with Tauri and I am looking forward to its bright future.
+
+P.S. Thanks for giving me the oppurtunity to work with Tauri!
+
 ## Extra's
+
+- Used Tauri instead of Electron
+- Converted my image generation code to Rust for a performace gain
+  - Extra because the code in the frontend still worked fine
+
+## Screenshots of end result
+
+![First startup](img/first_start_color.png)  
+First startup with the color picker open.
+
+![Generated image](img/generated.png)  
+Generated image with Rust backend.
+
+![Save dialog](img/save_dialog.png)  
+Save dialog for exporting the image
+
+![Exported](img/exported.png)  
+Confirmation from Rust backend that the image is exported.
+
+![Succesful file IO](img/file-io.png)  
+Succesful file IO
+
+![Multi-line speech](img/multi-line.png)  
+Multi-line speech text working, as well as random images
+
+![Github release](img/github_release.png)  
+Github release, showing all bundle packages
 
