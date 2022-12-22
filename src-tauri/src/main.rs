@@ -1,5 +1,3 @@
-#![allow(unused)] // TODO: remove later, beginning only
-
 #![cfg_attr(
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
@@ -20,11 +18,6 @@ use tauri::{Manager, WindowEvent, InvokeError};
 use rand::seq::SliceRandom;
 
 #[tauri::command]
-fn greet(name: &str, state: tauri::State<ImageState>) -> String {
-    "from Rust!".into()
-}
-
-#[tauri::command]
 async fn save_image(write_path: String, message: String, color: String, state: tauri::State<'_, ImageState>, app_handle: tauri::AppHandle) -> Result<()> {
     let path = Path::new(&write_path);
 
@@ -35,8 +28,6 @@ async fn save_image(write_path: String, message: String, color: String, state: t
     if let Some(asset) = asset {
         let asset_path = app_handle.path_resolver().resolve_resource(&asset.path)
             .expect("Asset should exist");
-
-        dbg!(&write_path);
 
         draw_image(
             path,
@@ -101,7 +92,7 @@ fn main() {
             }
             _ => {},
         })
-        .invoke_handler(tauri::generate_handler![greet, save_image, generate_image])
+        .invoke_handler(tauri::generate_handler![save_image, generate_image])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -46,14 +46,15 @@ Peter Leconte r0830684 3AD
 
 For our third report we're doing it differently. I was allowed to make my 
 project in Tauri instead of Electron.  
-We'll be covering the steps to combine/convert our Ionic project to Tauri, how 
-we can make use of the Tauri API and the process for building and 
-cross-building our application.  
+We'll be covering the steps to integrate Tauri into our Ionic project, how 
+we can make use of the Tauri API, the Rust backend and the process for building
+and cross-building our application.  
 Afterwards I will be comparing the two against each other, 
 as well as the other options we've seen before.
 
-Tauri is a frontend-independent application for multi-platform deployment,
-which has a backend in Rust compared to a backend with Node.js in Electron.
+Tauri is a framework for building lightweight, secure and fast multi-platform 
+applications using web technologies, which has a backend in Rust compared to a
+backend with Node.js in Electron.
 
 ### Changes in concept
 
@@ -67,8 +68,8 @@ in Rust.
 Do keep in mind however, that this was optional. The frontend code from previous
 project still works fine.
 
-Functionalty stays the same and compared to Ionic I also added a dialog for 
-exporting the image now.
+Compared to my previous project in Ionic, the save dialog for exporting images 
+is back.
 
 ## Steps followed
 
@@ -99,8 +100,8 @@ This will then ask the following questions:
 - What is your frontend dev command?
     - The forementioned `ionic serve` is what I used here
 - What is your frontend build command?
-    - You can use `ionic build` here but I had trouble with it incorrectly placing the assets,
-    so instead I used `npm run build` which builds with vue instead
+    - You can use `ionic build` just make sure your web assets folder is correct,
+    I used `npm run build` which builds with Vue instead
 
 After this our project will roughly look like this:
 ```
@@ -161,10 +162,11 @@ package and use it like so:
 invoke('my_custom_command', { invokeMessage: 'Hello!' })
 ```
 
-This return a promise, where we can get the data back from:
+This return a promise, which we can use like this to get our result:
 ```js
 invoke('my_custom_command', { invokeMessage: 'Hello!' })
     .then((message) => console.log(message))
+// or use await
 ```
 
 Easy!
@@ -173,7 +175,8 @@ Now let's see how we can apply this for image generation.
 
 #### Image generation
 
-Alright let's break down this handler.
+Alright let's break down this command:
+
 ```rust
 #[tauri::command]
 async fn generate_image(message: String, color: String, state: tauri::State<'_, ImageState>, app_handle: tauri::AppHandle) -> Result<String> {
@@ -196,8 +199,8 @@ async fn generate_image(message: String, color: String, state: tauri::State<'_, 
 }
 ```
 
-The first thing you might notice is that the function is async. This we don't 
-block our UI thread while we are generating our image.
+The first thing you might notice is that the function is async. This is so we 
+don't block our UI thread while we are generating our image.
 This function will get sent to seperate thread.
 
 > Async commands are executed on a separate thread using async_runtime::spawn. 
@@ -213,7 +216,7 @@ between handlers and the app.
 A simple use case for this would for example be to count how many times a handler 
 has been called from the frontend.
 
-In our case our state looks like this:
+In our case the state looks like this:
 ```rust
 pub struct ImageState {
     path: PathBuf,
@@ -251,8 +254,6 @@ fn main() {
 ```
 
 After registering our state we can access it inside our handlers.
-
-TODO: add link to explain the state with Rust more.
 
 The fourth parameter is our app handle. We'll use this to resolve paths.
 
@@ -364,6 +365,10 @@ used a state for this which I want to talk a bit more about.
 As mentioned before we can set our state with the manager function on our 
 application builder.
 
+Let's talk about this state in relation to Rust a little more.
+
+#### State with Rust
+
 While working with this state it will likely show you immediately how Rust 
 prevents you from making mistakes.
 
@@ -378,35 +383,44 @@ However this is not the case for our path. Why is this?
 
 When we pass the state to our application Rust keeps us safe from making mistakes.
 
-The borrowchecker for example makes it so that multiple instances of the state 
-cannot be made if it is mutable.  
-Which makes perfect sense. What if I generate the image but I immediately try 
+Our state isn't borrowed as a mutable by Tauri.  
+Which makes perfect sense. What if we try to increase a count at the same time 
+in multiple commands?  
+Or in our case: what if I generate the image but I immediately try 
 to export it right after? We might run into a race condition where it tries 
-to export previous state of our image, and then generates a new one.
-
-This might not happen but it also might.
+to export previous state of our image, and then generates a new one.  
 
 Rust steps in and simply doesn't allow us to make this mistake.
 
-Instead our state is immutable and we have to for example create mutexes inside 
-of our state to be able to change it.
+Instead our state is immutable and we cannot directly alter our state.
+We can however use a mutex in our state and modify the mutex.
 
-We cannot get around this, the compiler will simply tell you that is not possible
-unless you use a mutex (or similar).
+The compiler won't complain about this because it is not possible to have
+2 commands alter the mutex at the same time, they have to wait for their lock.
 
 This way *we know* that our value cannot be changed at the same between 
 multiple threads or commands.
 
+Crisis averted, the borrow checker and type safety saves us again!
+
 The term often used for this is "Fearless concurrency", here is a snippet from 
 the Rust book:
 
-> **Fearless Concurrency**  
-> Handling concurrent programming safely and efficiently is another of Rust’s major goals.
+> #### Fearless Concurrency
+> 
+> Handling concurrent programming safely and efficiently is another of Rust’s 
+> major goals.
 > Concurrent programming, where different parts of a program execute independently,
 > and parallel programming, where different parts of a program execute at the 
 > same time, are becoming increasingly important as more computers take advantage
 > of their multiple processors. Historically, programming in these contexts has
 > been difficult and error prone: Rust hopes to change that.
+>
+> Initially, the Rust team thought that ensuring memory safety and preventing
+> concurrency problems were two separate challenges to be solved with different
+> methods. Over time, the team discovered that the ownership and type systems 
+> are a powerful set of tools to help manage memory safety and concurrency 
+> problems! ...
 - [Rust book - Chapter 16](https://doc.rust-lang.org/book/ch16-00-concurrency.html) 
 
 ##### Why the option?
@@ -419,9 +433,30 @@ is `None`, after the first generation it has `Some(asset)`.
 
 The advantage of the `Option` type is simply to remove Null values and all the 
 problems they bring. It is now very clear whether the value is actually meant to 
-none and have to handle both cases explicitely in Rust to exhaust it.
+none and we have to handle both cases explicitely in Rust to exhaust all options.
+
+In our case we exhaust it like so:
+```rust
+    if let Some(asset) = asset {
+        let asset_path = app_handle.path_resolver().resolve_resource(&asset.path)
+            .expect("Asset should exist");
+
+        draw_image(
+            path,
+            &asset_path.as_path(),
+            &asset.point,
+            message,
+            color
+        ).await?;
+        return Ok(());
+    }
+```
+
+Here we check if asset is `Some`, if it is we take the asset out of it and 
+resolve and draw our image with it.
 
 Here is another snippet from the Rust book:
+
 > Programming language design is often thought of in terms of which features 
 > you include, but the features you exclude are important too. 
 > Rust doesn’t have the null feature that many other languages have. 
@@ -448,6 +483,9 @@ Here is another snippet from the Rust book:
 > 
 > However, the concept that null is trying to express is still a useful one:
 > a null is a value that is currently invalid or absent for some reason.
+- [Rust book - Chapter 6 on advantages of the Option Enum over Null values](https://doc.rust-lang.org/stable/book/ch06-01-defining-an-enum.html#the-option-enum-and-its-advantages-over-null-values)
+
+TODO: left off here!
 
 ### Using the Tauri API
 
@@ -680,7 +718,7 @@ https://tauri.app/blog/2022/12/09/tauri-mobile-alpha
 |---|---|---|---|---|---|---|
 | Qt | Fastest | Slowest | Yes | When Android SDK is implemented | Best | Smallest |
 | Ionic | Slower | Faster | Yes | Yes | Worse | Highly depends on used frameworks, platform and plugins |
-| Electron | Slower | Faster | Not included | No | Worse | Huge |
+| Electron | Slower | Faster | Not included | No | Worst | Huge |
 | Tauri | Faster | Slower | Not included | Yes (alpha) | Better | Small |
 
 ### Performance
@@ -772,7 +810,7 @@ Other noteable mentions for Tauri are:
 but it might also cause specific problems with compatability 
 (and in general bugs and workarounds)
   - For example: the webview used on linux has a bug where the colorpicker allows 
-  transparancy (which should not be the case), making it possible to crash the renderer
+  transparancy (which should not be the case) which crashes the renderer if picked.
 
 ### Native UI components
 
@@ -784,9 +822,12 @@ Electron and Tauri both don't offer UI components themselves but nothing stops
 you from using Material or even Ionic in your application.
 
 In fact, Ionic works well together with Electron and Tauri allowing you to 
-easily keep your design on the desktop as well(no development time was lost for 
+easily keep your design on the desktop as well (no development time was lost for 
 the frontend when integrating Tauri) but also use the plugins when building 
 for mobile.
+
+You can simply build it with Ionic for your mobile platforms and use Electron 
+for desktop.
 
 ### Mobile support
 
@@ -797,10 +838,10 @@ With Qt you will have to implement the Android SDK yourself and might need to al
 code and styling to get it working properly on all devices.
 
 Electron is made for desktop and does not support mobile, however like I 
-mentioned before Ionic is a great match together with electron.
+mentioned before Ionic is a great match together with Electron/Tauri.
 
 Tauri however does have (alpha) support for mobile. Which is great for 
-maintaining one project that is cross-platform for all desktops and mobile.
+maintaining one project that is cross-platform for all desktop and mobile platforms.
 
 ### Security
 
@@ -869,7 +910,7 @@ pointer. With the API you can request such an endpoint, which will return
 a promise wrapped in a closure that Rust injects at runtime in the webview.  
 After the promise resolution the handler will be nulled.
 
-This bridge method also means that unsafe functions aren't served like Electron 
+This bridge method means that unsafe functions aren't served like Electron 
 does.
 
 Not only that but it's also possible to encrypt message with a OTP salt between 
@@ -894,8 +935,9 @@ connected.
 
 ##### Electron's checklist
 
-The [Electron docs lists](https://www.electronjs.org/docs/latest/tutorial/security)
-a few steps to follow to improve the security of your application.  
+The [Electron docs](https://www.electronjs.org/docs/latest/tutorial/security)
+(16/12/2022) lists a few steps to follow to improve the security of your
+application.  
 Let's compare this list with our current Tauri application:
 
 1. **Only load secure content**
@@ -903,8 +945,9 @@ Let's compare this list with our current Tauri application:
 This is still very sound advice, even for Tauri and this advice should still be 
 followed.
 
-If the HTTP API of Tauri is used you will need to specify the scopes that are 
-allowed.
+You can also use the Tauri HTTP API which uses the Rust client for HTTP.  
+For this you need to enable it in the allowList and then you can as recommended
+set a scope with only secure content in it.
 
 2. **Disable the Node.js integration in all renderers that display remote content**
 
@@ -917,14 +960,16 @@ or are not working with the Rust backend.
 
 3. **Enable context isolation in all renderers**
 
-The Rust backend is inherently isolated.
+The Rust backend is inherently isolated from the renderer processes.
 
 4. **Enable process sandboxing**
 
-This feature is specific to Chromium and Tauri uses different webviews specific
-to the used platform.  
-However, renderer (UI) and Rust backend are inherently seperated and can 
-only communicate using the Tauri API.
+Tauri is inherently sandboxed. The frontend has to communicate with the Rust 
+backend through IPC. The frontend (UI, renderer processes) and Rust backend are 
+seperated.
+
+What is allowed and what is not allowed is defined through it the Tauri 
+configuration file and the commands that are registered in the Rust code.
 
 5. **Handle session permission requests from remote content**
 
@@ -938,8 +983,10 @@ in which case this becomes an upstream issue which you might have to wait for.
 
 6. **Do not disable webSecurity**
 
-Not that relevant to Tauri as this option is not a thing.
-TODO
+It is recommended to only enable features as you need them and to properly set 
+your scopes. Tauri works with an opt-in system for features.
+
+It is not indeed not recommended to disable security.
 
 7. **Define a Content-Security-Policy and use restrictive rules (i.e. script-src 'self')**
 
@@ -951,7 +998,12 @@ Only allow what is necessary for you application.
 
 8. **Do not enable allowRunningInsecureContent**
 
-Same argument as 1.
+Same argument as point 1.
+
+(I am uncertain but I believe this is recommendation is the default for
+the webviews).
+
+TODO CHECK
 
 9. **Do not enable experimental features**
 
@@ -963,7 +1015,7 @@ security.
 
 10. **Do not use enableBlinkFeatures**
 
-These features are specific to Chromium. However, Tauri uses a variety of 
+These features are specific to Chromium. Tauri uses a variety of 
 webviews, so this is not relevant.
 
 11. **<webview>: Do not use allowpopups**
@@ -976,6 +1028,10 @@ Like any feature in Tauri and Electron, it's best not to enable if not needed.
 These options can be verified in one central location, your configuration file.  
 It is always important to verify your choices and enabled features to enhance 
 security.
+
+It is also important to revisit your past choices and make sure if they are 
+still needed. For example during development you might have temporarily made
+your scope too large and it can be made smaller.
 
 13. **Disable or limit navigation**
 
@@ -993,23 +1049,21 @@ Like point 11, creation of windows is turned off by default.
 15. **Do not use shell.openExternal with untrusted content**
 
 This advice is also sound for Tauri.  
-In the Rust backend it is possible use the shell. As with all things,
+In the Rust backend it is possible to use the shell. As with all things,
 input validation and sanitation is important. If possible to avoid, definitely
-do. As for example opening external content with the shell can be leveraged for 
-executing arbitrary commands.
+do as untrusted content with the shell may be a huge security vulnerability
+(leveraging it for executing arbitrary commands).
 
 16. **Use a current version of Electron**
 
 This is true for any piece of software, also Tauri but not only that but in 
-general the dependencies you use for your project. Make sure it's up-to-date.
+general the dependencies you use for your project. Make sure it's up-to-date
+for the latest security patches.
 
 17. **Validate the sender of all IPC messages**
 
 Tauri has multiple methods of hardening functions as mentioned before, which 
 makes abusing this bridge incredibly hard.
-
-While technically possible to make an extra validation, this would require you
-to access the webview which is dependant on your platform.
 
 ### Bundle size
 
@@ -1017,12 +1071,13 @@ It's a small one (hah) but I do want to talk about it.
 
 One of the main selling points of Tauri is it's small bundle size.  
 This is because they don't bundle an entire webview along with the executable 
-like Electron does with chromium. This results in a huge cut in size.
+like Electron does with chromium. This results in a huge cut in size (it can 
+be less than 600kb).
 
 Depending on the features you exclude from your configuration file in Tauri
 the bundle size will also get smaller.
 
-Most of the size comes from it beind an AppImage or the included 4k images.
+You can look at some of the benchmarks [here](https://tauri.app/v1/references/benchmarks).
 
 ## Links to theory lesson
 
@@ -1046,20 +1101,21 @@ secure frontend for multi-platform deployment.
 The documentation and easy-to-use API made it fun to work with.
 
 The extra focus on security, speed and bundle size is unmatched compared to 
-Electron and it definitely makes it worthwhile to consider for you next project.
+Electron and it definitely makes it worthwhile option to consider
+for your next project.
 
 The flexibility of being able to use Rust on the backend is great for optimizing
-heavy operation.
+heavy operations that your application might have as well.
 
 The tools and documentation they provide are incredible (cross-building
 with Github Actions is a bliss).
 
 The future for Tauri also looks bright with mobile support right around the 
-corner and improving every waking second.
+corner and the project itself improving every waking second.
 
 However, that doesn't mean it doesn't come with any downsides.  
-The webviews come with benefits but also drawbacks, namely compatability and 
-features.
+The use of webviews come with benefits but also drawbacks, namely compatability
+and features.
 
 In fact, during development one of the issues I encountered had to do with 
 Webkitgtk, an upstream error.
@@ -1072,11 +1128,12 @@ webkitgtk doesn't support WebRTC yet.
 Another disadvantage is actually Rust. A blessing and a curse at the same time.
 Rust means an extra language to maintain (and likely learn) within the project.
 Rust being a relatively young language might mean you don't have the same broad
-amount of libraries as for example npm might have.
+amount of libraries as for example npm with Node.js might have.
+
 To add on to this, Tauri's ecosystem in general isn't as big as Electron's 
 ecosystem. Finding plugins or even solutions online might be more difficult 
-(although for that last one, Tauri's community is incredibly welcoming 
-and helpful, not a single question went unanswered).  
+(although for that last one: Tauri's community is incredibly welcoming 
+and helpful, not a single question I had went unanswered).  
 However, this is a problem that will be fixed with time.
 
 I had a blast working with Tauri and I am looking forward to its bright future.
