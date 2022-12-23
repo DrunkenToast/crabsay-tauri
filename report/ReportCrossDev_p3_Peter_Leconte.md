@@ -266,8 +266,9 @@ This way we can access our state later when we want to export an asset.
 In the next step we resolve our path from our asset.  
 We want to have the path of where our asset is stored after building our application
 and storing the assets along side it. This function will do that for us, this 
-way we don't have to worry about about having the wrong path that only working 
-during development.
+way we don't have to worry about about having the wrong path that only works 
+during development, this will take into account where the assets are stored 
+relative to our executable.
 
 This is what path resolver does.
 ```rs
@@ -485,8 +486,6 @@ Here is another snippet from the Rust book:
 > a null is a value that is currently invalid or absent for some reason.
 - [Rust book - Chapter 6 on advantages of the Option Enum over Null values](https://doc.rust-lang.org/stable/book/ch06-01-defining-an-enum.html#the-option-enum-and-its-advantages-over-null-values)
 
-TODO: left off here!
-
 ### Using the Tauri API
 
 In our application we use the Tauri API for 3 things:
@@ -495,48 +494,50 @@ In our application we use the Tauri API for 3 things:
 - Opening a file dialog to get a valid save location for an image
 - Using the asset protocol
 
-Tauri's philosophy is a little different from Tauri's so for most things in 
+Tauri's philosophy is a little different from Electron's so for most things in 
 the configuration the default in the allowlist is set to false.
 
 This is not only for security (which is already a big one) but also for a reduced
 bundle size.
 
+`src-tauri/tauri.conf.json`:
+
 ```json
-...
-"tauri": {
-    "allowlist": {
-        "all": false,
-        "protocol": {
-            "all": false,
-            "asset": true,
-            "assetScope": ["$TEMP/**/*crabsay.png"]
-        },
-        "dialog": {
-            "all": false,
-            "save": true
-        }
-    },
     ...
+    "tauri": {
+        "allowlist": {
+            "all": false,
+            "protocol": {
+                "all": false,
+                "asset": true,
+                "assetScope": ["$TEMP/crabsay.png"]
+            },
+            "dialog": {
+                "all": false,
+                "save": true
+            }
+        },
+        ...
 ```
 
 Here for our asset protocol we first enable it and then define the scope.
 The more specific you can make it, the better.
 In our case we specify a file named inside of our OS's temperary folder
-named crabsay.png
-
-For our dialog we only want to enable the save dialog, it's the only one we use.
+named crabsay.png, it won't be named anything thing else or placed elsewhere.
 
 ```typescript
 import { convertFileSrc } from "@tauri-apps/api/tauri";
 
 ...
-
 imgDataUrl.value = convertFileSrc(path as string) + "?t=" + timestamp;
 ```
 
-convertFileSrc takes a path and converts it to a uri using the asset protocol.
+`convertFileSrc` takes a path and converts it to a uri using the asset protocol.
+
+For our dialog we only want to enable the save dialog, it's the only one we use.
 
 For our save dialog we can use the save function:
+
 ```typescript
 import { save } from '@tauri-apps/api/dialog';
 
@@ -562,18 +563,21 @@ ending in png.
 Before actually building our application there are a few things that we have to do.
 
 First up we have to declare our beforeBuildCommand. Similar to our beforeDevCommand
-(which is set to `ionic serve`) we have to define what will build our frontend.
-
+(which is set to `ionic serve`) we have to define what will build our frontend.  
 The place where this then gets built has to be our distDir as well.
 
+This was set when integrating Tauri earlier, you can change these settings in 
+the configuration file.
+
 As for configuring Vue, we have to set a relative public path:
+
 ```js
 module.exports = {
     publicPath: "./",
 }
 ```
 
-and then also change our routing to this (Thanks Dries :D xoxo, Ionic's weird):
+and then also change our routing to this (thanks Dries :D, Ionic is weird):
 
 ```ts
 const router = createRouter({
@@ -583,21 +587,23 @@ const router = createRouter({
 ```
 
 Our custom resources for images also need to be included (this way they will be
-present with our executable).
+present together with our executable).
 
 Simply add `"resources": ["assets/**"]` to your bundle tauri configuration.
 
 When running in dev mode it's actually running the 
-`ionic serve` command. Tauri has no control over it's `csp` settings.
+`ionic serve` command. Tauri has no control over it's `CSP` settings.
 
-However, in build this *is* properly applied and so we might run into a couple of issues:
+However, in build this *is* properly applied and so we might run into a couple
+of issues:
+
 - Our request to whatthecommit isn't working
 - Not all our styles are properly working
 - Not even our own image asset is working!
 
 What gives?
 
-Well we have to set our csp settings to this:
+Well we have to set our csp settings to something like this:
 ```json
 "security": {
     "csp": "default-src 'self' https://whatthecommit.com/index.txt; img-src 'self' asset: https://asset.localhost; style-src 'self' 'unsafe-inline'"
@@ -618,7 +624,9 @@ Alright, after all that is dealt with, let's get buildin'!
 Building for our native toolchain is as easy as running `cargo tauri build`.
 
 On Linux this will build a .deb file but also an AppImage.  
-On Windows we will get a proper msi installer that we can distribute.
+On Windows we will get a proper msi installer that we can distribute.  
+On MacOS we will get an Application bundle (`.app`) or an Apple Disk Image
+(`.dmg`).  
 
 #### Crossbuilding
 
@@ -683,7 +691,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }} # This only works if your workflow triggers on new tags.
-          releaseName: 'App Name v__VERSION__' # tauri-action replaces \_\_VERSION\_\_ with the app version.
+          releaseName: 'Crabsay v__VERSION__' # tauri-action replaces \_\_VERSION\_\_ with the app version.
           releaseBody: 'See the assets to download and install this version.'
           releaseDraft: true
           prerelease: false
@@ -691,7 +699,7 @@ jobs:
 
 1. This workflow triggers when we push a tag that starts with 'v'
 1. We specify the platform targets
-1. The workflow will innstall all the needed dependencies
+1. The workflow will install all the needed dependencies
 1. Rust setup and caching
 1. Sync the node version and cache
 1. Install all app deps and build frontend (in our case building is already 
@@ -716,8 +724,8 @@ https://tauri.app/blog/2022/12/09/tauri-mobile-alpha
 
 | Platform | Performance | Development time | Native UI components | Mobile support | Security | Size |
 |---|---|---|---|---|---|---|
-| Qt | Fastest | Slowest | Yes | When Android SDK is implemented | Best | Smallest |
-| Ionic | Slower | Faster | Yes | Yes | Worse | Highly depends on used frameworks, platform and plugins |
+| Qt | Fastest | Slowest | Yes | When Android SDK is implemented | Best | Small |
+| Ionic | Slower | Faster | Yes | Yes | Worse | Highly depends on used frameworks, the platform and plugins |
 | Electron | Slower | Faster | Not included | No | Worst | Huge |
 | Tauri | Faster | Slower | Not included | Yes (alpha) | Better | Small |
 
@@ -735,21 +743,22 @@ The image generation code from our Ionic project still works perfectly fine,
 but now we were able to leverage Rust to make it faster.
 
 > There is some overhead in calling to the backend, so sometimes it is faster to simply
-> call a quick fetch in the frontend instead of grabbing it from Rust.
+> use javascipt in the frontend instead of doing it in Rust.
 
-This wouldn't hold true for electron, as both the frontend and backend are 
+This wouldn't hold true for Electron, as both the frontend and backend are 
 javascript on the V8 engine.  
 Tauri outperforms Electron in terms of performance with Rust, launch time and
 memory comsumption.
 
-(One thing to note is that for the renderer and frontend js, Electron might beat
-Tauri depending on which webview is used)
+(One thing to note is that for the renderer and frontend JS, Electron might beat
+Tauri depending on which webview is used.)
 
 We also have to keep in mind that the Rust backend is still seperate from the 
-javascript, our website *itself* won't be any faster.
+Javascript, our website *itself* won't be any faster.
 
-For example QPainter's speed will not be matched by any other of the platforms
-we used and the ease of use of the API may not be underestimated.
+For example QPainter's speed to draw in our application itself will not be
+matched by any other of the platforms we used and the ease of use of the API
+may not be underestimated either.
 
 So while Qt still takes the performance crown, Tauri is a force to be reckoned
 with as well.
@@ -763,16 +772,20 @@ from desktop which means multiple teams might be needed to maintain the project.
 
 I would also argue that creating a UI with web technologies is easier than with 
 Qt, especially if you want to create brand specific styling (outside of native 
-components).
+components). It will also be easier to find people good at designing websites
+compared to Qt designers as it is way more specific.
 
 Development time for Tauri gets tricky.  
-Web development stays the same, we can use our familiar html, css and even javascript
-for our frontend. However, our backend is in Rust rather than javascript for 
-electron.
+Web development stays the same, we can use our familiar html, css and even 
+javascript for our frontend.
+However, our backend is in Rust rather than javascript for 
+Electron.
 
 Two different languages does cause fragmentation.
 However the easy-to-use API does somewhat make up for it (for example: 
-opening a save dialog).
+opening dialogs, using the HTTP API, accessing the clipboard, sending
+notifications ... all don't require the use of Rust and are simply an API in 
+Javascript).
 
 I would argue that Rust is more difficult than Typescript, and since it's a young
 language we have to take learning into account as well :).
@@ -784,7 +797,7 @@ For example for drawing on top of images, I ended up finding a crate meant for
 drawing on top of targets such as windows or bitmaps.
 
 However, I did not find a clear way to convert a loaded image from the image crate 
-to a drawtarget of the other library.
+to a drawtarget of another library.
 Luckily, the drawing crate did have an example using a pngdecoder but having an 
 easy to use library which abstracts such things is nice to have.
 
@@ -795,34 +808,37 @@ The lack of such maturity in libraries might eat at development time and
 maintainability.
 
 As for Tauri itself, it's young and issues are expected but its future looks 
-very bright to me (especially alpha mobile has me excited).  
+very bright to me (especially alpha mobile support has me excited).  
 I am not concerned with this issue because of all the attention and popularity
 Rust and Tauri have been getting. This will automatically be solved given time.
 
-But it is very clear that Qt is a very mature platform with a well defined API.
+It is also very clear to me that Qt is a very mature platform with
+a well defined and easy-to-use API.
 
-Other noteable mentions for Tauri are:
-- Windows bundle comes with a .msi installer
+A few notible mentions for development time with Tauri are:
+- Cross-building is very easy with the Github Action
+  - Windows bundle comes with a .msi installer ready to use
 - Tauri provides an auto updater
 - Tauri is "truly" cross-platform, having support for both desktop and mobile 
 (alpha) platforms
 - Using the system's webview comes with the obvious benefit of bundle size 
 but it might also cause specific problems with compatability 
-(and in general bugs and workarounds)
+(and in general bugs and sometimes workarounds are needed)
   - For example: the webview used on linux has a bug where the colorpicker allows 
-  transparancy (which should not be the case) which crashes the renderer if picked.
+  transparancy (which should not be the case) which crashes the renderer if picked
+  and this bug does not happen in other webviews.
 
 ### Native UI components
 
 Both Qt and Ionic offer native UI components. Allowing to easily create a UI 
 which will fit on the end users device's theme.  
-They are also adaptive, meaning they will change depending on the platform.
+They are adaptive, meaning they will change depending on the platform.
 
 Electron and Tauri both don't offer UI components themselves but nothing stops
 you from using Material or even Ionic in your application.
 
 In fact, Ionic works well together with Electron and Tauri allowing you to 
-easily keep your design on the desktop as well (no development time was lost for 
+easily keep your design on mobile and on desktop as well (no development time was lost for 
 the frontend when integrating Tauri) but also use the plugins when building 
 for mobile.
 
@@ -831,41 +847,47 @@ for desktop.
 
 ### Mobile support
 
-Ionic supports android by simply wrapping ionic in a simple android webview project.  
+Ionic supports android by simply wrapping your project in a simple 
+webview project (and maybe a sprinkle of plugins from Cordova/Capacitor).  
 And since it's mostly web technology, PWA's are also supported.
 
-With Qt you will have to implement the Android SDK yourself and might need to alter
-code and styling to get it working properly on all devices.
+With Qt you will have to implement the Android SDK or iOS port yourself and
+might need to alter code and styling to get it working properly on all devices.
 
 Electron is made for desktop and does not support mobile, however like I 
 mentioned before Ionic is a great match together with Electron/Tauri.
 
 Tauri however does have (alpha) support for mobile. Which is great for 
-maintaining one project that is cross-platform for all desktop and mobile platforms.
+maintaining one project that is cross-platform for all desktop and mobile
+platforms.
 
 ### Security
 
 Ionic creates hybrid apps and hybrid apps by nature are at higher risk than 
 native apps.  
-They have security vurnerabilities unique to the programming language,
-vurnerabilities that affect the used web browser *and* those that affect native 
+They have security vulnerabilities unique to the programming language,
+vulnerabilities that affect the used web browser *and* those that affect native 
 apps. This is because hybrid apps still use the webview along with native code.
 
-Compared to Qt we aren't susceptible to browser vurnerabilities, just our native 
+Compared to Qt we aren't susceptible to browser vulnerabilities, just our native 
 code and programming language.
+
+Now let's compare Tauri with Electron.
 
 #### Tauri vs Electron
 
 One of the biggest philosophy shifts between Tauri and Electron has to be the
 security policy.
 
-In Electron you get may get warning if you don't use a security policy,
-in Tauri you start with one that sets almost everything to false.
+In Electron you get may get warning if you don't use the recommended security 
+settings, in Tauri it won't work and you will get an error since by default 
+everything is set to false.
 
 In essence this means that in Tauri you are meant to incrementally add the
 features you need (not only for security but also for bundle size).
 
-Tauri is designed with security in mind (but that does not mean there won't be).
+Tauri is designed with security in mind (but that does not mean there won't be
+any security vulnerabilities).
 
 Let's cover some of the ways Tauri hardens their [security](https://tauri.app/v1/references/architecture/security).
 
