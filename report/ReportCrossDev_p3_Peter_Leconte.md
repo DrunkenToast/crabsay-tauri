@@ -1154,6 +1154,9 @@ bundle size are priorities for your project.
 
 I had a blast working with Tauri and I am looking forward to its bright future.
 
+The download is available at:  
+https://github.com/DrunkenToast/crabsay-tauri/releases
+
 P.S. Thanks for giving me the oppurtunity to work with Tauri!
 
 ## Extra's
