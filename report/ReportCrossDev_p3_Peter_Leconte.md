@@ -1164,6 +1164,8 @@ P.S. Thanks for giving me the oppurtunity to work with Tauri!
 
 ## Screenshots of end result
 
+### Linux
+
 ![First startup](img/first_start_color.png)  
 First startup with the color picker open.
 
@@ -1182,5 +1184,31 @@ Succesful file IO
 ![Multi-line speech](img/multi-line.png)  
 Multi-line speech text working, as well as random images
 
+### Windows
+
+#### Installer
+
+![Installer](img/win/install1.png)  
+![Installer](img/win/install2.png)  
+![Installer](img/win/install3.png)  
+![Installer](img/win/install4.png)  
+![Installer](img/win/install5.png)  
+
+#### Application
+
+Screenshots are from a *slightly* outdated version
+
+![First startup](img/win/firststart.png)  
+![Color picker](img/win/color.png)  
+![Generated](img/win/gen.png)  
+![Export save dialog](img/win/export.png)  
+![File IO works](img/win/fileio.png)  
+
+### Github
+
+![Github action](img/github_action.png)
+Github action finished building
+
 ![Github release](img/github_release.png)  
+Github release with multiple platforms available for download
 
