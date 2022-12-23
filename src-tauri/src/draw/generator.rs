@@ -1,21 +1,11 @@
 use crate::draw::draw_utils::{draw_tail, draw_rounded_rect, draw_text};
-use crate::draw::image_asset::*;
 use crate::prelude::*;
 use crate::draw::image_asset::Point;
 
 use hex;
-use image::imageops::FilterType;
-use image::{ImageEncoder, GenericImage, ImageBuffer, open};
-use imageproc::drawing::{
-    draw_filled_rect_mut, draw_hollow_circle_mut, draw_hollow_rect_mut, draw_polygon_mut,
-};
-use imageproc::rect::Rect;
 use raqote::*;
 use std::fs::File;
-use std::io::BufWriter;
-use std::path::{Path, PathBuf};
-use image::Pixel;
-use image::Pixels;
+use std::path::Path;
 
 pub async fn draw_image(
     write_path: &Path,
@@ -25,8 +15,6 @@ pub async fn draw_image(
     color: String,
 ) -> Result<()> {
     dbg!("Drawing now");
-    let white = image::Rgba([255u8, 255u8, 255u8, 255u8]);
-
     let mut chars = color.chars();
     chars.next();
     let color = chars.as_str();
@@ -35,7 +23,7 @@ pub async fn draw_image(
 
     let mut color_source = raqote::SolidSource::from_unpremultiplied_argb(255u8, 0u8, 0u8, 0u8);
 
-    if (color.len() >= 3) {
+    if color.len() >= 3 {
         color_source = raqote::SolidSource::from_unpremultiplied_argb(255u8, color[0], color[1], color[2]);
     }
 

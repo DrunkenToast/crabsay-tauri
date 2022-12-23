@@ -13,7 +13,7 @@ use draw::image_asset::*;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use tauri::{Manager, WindowEvent, InvokeError};
+use tauri::{Manager, WindowEvent};
 
 use rand::seq::SliceRandom;
 
@@ -88,7 +88,9 @@ fn main() {
         .on_window_event(|event| match event.event() {
             WindowEvent::CloseRequested {..} => {
                 println!("Exiting, cleaning up...");
-                std::fs::remove_file(event.window().state::<ImageState>().path.as_path());
+                _ = std::fs::remove_file(
+                    event.window().state::<ImageState>().path.as_path()
+                );
             }
             _ => {},
         })

@@ -1,10 +1,6 @@
-use std::io;
-
 use font_kit::error::{SelectionError, FontLoadingError};
-use image::ImageError;
 use png::DecodingError;
 use tauri::InvokeError;
-use serde_json::Value;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

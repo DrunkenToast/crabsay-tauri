@@ -1,6 +1,4 @@
 import Settings from "../services/settings";
-import { roundRect, drawPolygon } from "../util/draw";
-import { Point } from "@/models/point";
 import { Ref } from "vue";
 import { invoke } from "@tauri-apps/api";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
@@ -10,7 +8,7 @@ export async function generateImage(
     isGenerating: Ref<boolean>,
     imgDataUrl: Ref<string>
 ): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve, _reject) => {
         isGenerating.value = true;
         imgDataUrl.value = "";
 

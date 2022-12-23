@@ -1,4 +1,3 @@
-use font_kit::loader::FallbackFont;
 use raqote::{DrawTarget, Source, StrokeStyle, PathBuilder, DrawOptions, SolidSource, Point};
 
 use font_kit::family_name::FamilyName;
@@ -19,8 +18,8 @@ pub fn draw_rounded_rect(
 
     let x = top_left.0 ;
     let y = top_left.1 ;
-    let w = (bottom_right.0 - top_left.0) ;
-    let h = (bottom_right.1 - top_left.1) ;
+    let w = bottom_right.0 - top_left.0;
+    let h = bottom_right.1 - top_left.1;
 
     pb.move_to(x + radius , y);
 
