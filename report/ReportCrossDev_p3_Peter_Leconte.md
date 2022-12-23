@@ -178,6 +178,7 @@ Now let's see how we can apply this for image generation.
 Alright let's break down this command:
 
 ```rust
+// src-tauri/main.rs
 #[tauri::command]
 async fn generate_image(message: String, color: String, state: tauri::State<'_, ImageState>, app_handle: tauri::AppHandle) -> Result<String> {
     let asset = DEFAULT_ASSETS.choose(&mut rand::thread_rng())
@@ -218,6 +219,7 @@ has been called from the frontend.
 
 In our case the state looks like this:
 ```rust
+// src-tauri/src/main.rs
 pub struct ImageState {
     path: PathBuf,
     asset: Mutex<Option<&'static ImageAsset>>,
@@ -226,6 +228,7 @@ pub struct ImageState {
 
 Which we can define and manage in our Tauri application like so: 
 ```rust 
+// src-tauri/src/main.rs
 fn main() {
     // Here we create a state with our temporary file location
     // and an empty asset (the asset hasn't been decided yet)
@@ -284,6 +287,8 @@ bubble it up and show the error in the front-end.
 In the front-end we handle it like this:
 
 ```typescript
+// src/util/image-generation.ts
+
 export async function generateImage(
     isGenerating: Ref<boolean>,
     imgDataUrl: Ref<string>
@@ -328,6 +333,8 @@ unique from the previous url. This way our renderer knows it has actually change
 The errors that bubble up from our draw function get a string attached to them:
 
 ```rust
+// src-tauri/src/error.rs
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Generic error: {0}")]
@@ -439,6 +446,8 @@ options.
 
 In our case we exhaust it like so:
 ```rust
+// src-tauri/src/main.rs
+
     if let Some(asset) = asset {
         let asset_path = app_handle.path_resolver().resolve_resource(&asset.path)
             .expect("Asset should exist");
@@ -527,6 +536,8 @@ In our case we specify a file named inside of our OS's temperary folder
 named crabsay.png, it won't be named anything thing else or placed elsewhere.
 
 ```typescript
+// src/util/image-generation.ts
+
 import { convertFileSrc } from "@tauri-apps/api/tauri";
 
 ...
@@ -540,6 +551,8 @@ For our dialog we only want to enable the save dialog, it's the only one we use.
 For our save dialog we can use the save function:
 
 ```typescript
+// src/util/save-image.ts
+
 import { save } from '@tauri-apps/api/dialog';
 
 async function exportImage() {
@@ -568,7 +581,7 @@ First up we have to declare our beforeBuildCommand. Similar to our beforeDevComm
 The place where this then gets built has to be our distDir as well.
 
 This was set when integrating Tauri earlier, you can change these settings in 
-the configuration file.
+the tauri configuration file.
 
 As for configuring Vue, we have to set a relative public path:
 
@@ -581,6 +594,8 @@ module.exports = {
 and then also change our routing to this (thanks Dries :D, Ionic is weird):
 
 ```ts
+// src/router/index.ts
+
 const router = createRouter({
   history: createWebHashHistory(process.env.BASE_URL),
   routes
@@ -639,7 +654,7 @@ all bundles for Linux, Windows and MacOS and put it up as a release.
 This CI/CD pipeline can also be used to check if your application builds on
 all platforms when u make changes or create PRs.
 
-Let's take a look at Github workflow template I used:
+Let's take a look at Github workflow I used (`.github/workflows/release.yml`):
 
 ```yaml
 name: Release
